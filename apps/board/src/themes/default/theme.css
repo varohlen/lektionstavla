@@ -1,0 +1,77 @@
+/*
+ * Default theme for the open source core app.
+ * Copy this file as a starting point for your own school's theme.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap");
+
+:root {
+  /* Brand palette - neutral grayscale + accent */
+  --brand-danger-700: #b91c3a;
+  --brand-danger-600: #dc2e4a;
+  --brand-danger-500: #e8566e;
+  --brand-danger-400: #f08898;
+  --brand-danger-300: #f6bcc6;
+
+  --brand-primary-900: #1e1b4b;
+  --brand-primary-700: #4338ca;
+  --brand-primary-600: #4f46e5;
+  --brand-primary-500: #6366f1;
+  --brand-primary-300: #c7d2fe;
+
+  --brand-warm-700: #9a4520;
+  --brand-warm-600: #c25a2b;
+  --brand-warm-500: #d87a45;
+  --brand-warm-400: #f0a878;
+  --brand-warm-300: #f5cba5;
+
+  --brand-success-700: #2f5233;
+  --brand-success-600: #476b3d;
+  --brand-success-500: #6b8e4a;
+  --brand-success-400: #9fb77a;
+  --brand-success-300: #c5d6a3;
+
+  /* Typography */
+  --font-body: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "League Spartan", "Inter", "Segoe UI", -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", "Cascadia Code", "Fira Code", monospace;
+}
+
+body {
+  font-family: var(--font-body);
+  background: #f5f6fb;
+  color: var(--brand-primary-900);
+}
+
+/* Light surface */
+.screen-shell {
+  --bg-top: #f5f6fb;
+  --bg-bottom: #eaecf6;
+  --text: var(--brand-primary-900);
+  --muted: rgba(30, 27, 75, 0.58);
+  --border: rgba(30, 27, 75, 0.1);
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-soft: rgba(255, 255, 255, 0.88);
+  --hint-surface: rgba(255, 255, 255, 0.92);
+  --canvas: transparent;
+  --shadow: 0 4px 24px rgba(30, 27, 75, 0.06), 0 1px 3px rgba(30, 27, 75, 0.04);
+  --orb-left: rgba(199, 210, 254, 0.7);
+  --orb-right: rgba(240, 168, 120, 0.35);
+}
+
+/* Dark surface */
+.screen-shell[data-theme="dark"] {
+  --bg-top: #101020;
+  --bg-bottom: #181830;
+  --text: #eef0f8;
+  --muted: rgba(238, 240, 248, 0.6);
+  --border: rgba(199, 210, 254, 0.1);
+  --surface: rgba(22, 22, 42, 0.92);
+  --surface-soft: rgba(22, 22, 42, 0.88);
+  --hint-surface: rgba(22, 22, 42, 0.92);
+  --canvas: transparent;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.14);
+  --orb-left: rgba(99, 102, 241, 0.1);
+  --orb-right: rgba(216, 122, 69, 0.08);
+}

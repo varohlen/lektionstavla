@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Widget theme variables (matching classroom-screen app) */
+:root {
+	--brand-danger-700: #b91c3a;
+	--brand-danger-600: #dc2e4a;
+	--brand-danger-500: #e8566e;
+	--brand-danger-400: #f08898;
+	--brand-danger-300: #f6bcc6;
+
+	--brand-primary-900: #1e1b4b;
+	--brand-primary-700: #4338ca;
+	--brand-primary-600: #4f46e5;
+	--brand-primary-500: #6366f1;
+	--brand-primary-300: #c7d2fe;
+
+	--brand-warm-700: #9a4520;
+	--brand-warm-600: #c25a2b;
+	--brand-warm-500: #d87a45;
+	--brand-warm-400: #f0a878;
+	--brand-warm-300: #f5cba5;
+
+	--brand-success-700: #2f5233;
+	--brand-success-600: #476b3d;
+	--brand-success-500: #6b8e4a;
+	--brand-success-400: #9fb77a;
+	--brand-success-300: #c5d6a3;
+
+	--text: #1e1b4b;
+	--surface: rgba(255, 255, 255, 0.94);
+}
+
+.dark {
+	--text: #eef0f8;
+	--surface: rgba(22, 22, 42, 0.92);
+}
+
+@theme {
+	--font-display: "League Spartan", sans-serif;
+	--font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+	--color-indigo-900: #1e1b4b;
+	--color-indigo-800: #283080;
+	--color-indigo-700: #4338ca;
+	--color-indigo-600: #4f46e5;
+	--color-indigo-500: #6366f1;
+	--color-indigo-400: #818cf8;
+	--color-indigo-300: #c7d2fe;
+	--color-indigo-200: #e0e7ff;
+	--color-indigo-100: #eef2ff;
+
+	--color-surface-light: #f5f6fb;
+	--color-surface-dark: #101020;
+	--color-surface-card-light: rgba(255, 255, 255, 0.94);
+	--color-surface-card-dark: rgba(22, 22, 42, 0.92);
+}
+

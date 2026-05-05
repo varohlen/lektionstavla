@@ -1,0 +1,21 @@
+{
+  "name": "lektionstavla",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev:board": "pnpm --filter board dev",
+    "dev:landing": "pnpm --filter landing dev",
+    "build:board": "pnpm --filter board build",
+    "build:landing": "pnpm --filter landing build"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "allowAny": ["vite", "vitest"],
+      "allowedVersions": {
+        "vite": "*",
+        "vitest": "*"
+      }
+    }
+  }
+}

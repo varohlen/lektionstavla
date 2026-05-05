@@ -1,0 +1,75 @@
+/*
+ * Partille Gymnasium theme
+ * Brand palette: blue (primary), orange (warm), red (danger), green (success)
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Knewave&display=swap");
+
+:root {
+  /* Brand palette */
+  --brand-danger-700: #bc163f;
+  --brand-danger-600: #dd465b;
+  --brand-danger-500: #cf6474;
+  --brand-danger-400: #e79195;
+  --brand-danger-300: #ecbdca;
+
+  --brand-primary-900: #003b4a;
+  --brand-primary-700: #005f7f;
+  --brand-primary-600: #4d86a0;
+  --brand-primary-500: #6fb0c8;
+  --brand-primary-300: #b9dbe5;
+
+  --brand-warm-700: #b83d25;
+  --brand-warm-600: #d84412;
+  --brand-warm-500: #dc844e;
+  --brand-warm-400: #f8bca0;
+  --brand-warm-300: #f2ceb3;
+
+  --brand-success-700: #2a5235;
+  --brand-success-600: #46763b;
+  --brand-success-500: #769b48;
+  --brand-success-400: #acc280;
+  --brand-success-300: #c2d5a3;
+
+  /* Typography */
+  --font-body: "Myriad Pro", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: "Knewave", "Myriad Pro", sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  background: #f2f7f8;
+  color: var(--brand-primary-900);
+}
+
+/* Light surface */
+.screen-shell {
+  --bg-top: #f0f5f7;
+  --bg-bottom: #e6eef1;
+  --text: var(--brand-primary-900);
+  --muted: rgba(0, 59, 74, 0.68);
+  --border: rgba(0, 59, 74, 0.1);
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-soft: rgba(255, 255, 255, 0.88);
+  --hint-surface: rgba(255, 255, 255, 0.92);
+  --canvas: transparent;
+  --shadow: 0 4px 24px rgba(0, 59, 74, 0.06), 0 1px 3px rgba(0, 59, 74, 0.04);
+  --orb-left: rgba(185, 219, 229, 0.88);
+  --orb-right: rgba(248, 188, 160, 0.48);
+}
+
+/* Dark surface */
+.screen-shell[data-theme="dark"] {
+  --bg-top: #081e28;
+  --bg-bottom: #0a2a38;
+  --text: #f0f6f8;
+  --muted: rgba(240, 246, 248, 0.64);
+  --border: rgba(185, 219, 229, 0.12);
+  --surface: rgba(12, 38, 50, 0.92);
+  --surface-soft: rgba(12, 38, 50, 0.88);
+  --hint-surface: rgba(12, 38, 50, 0.92);
+  --canvas: transparent;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.12);
+  --orb-left: rgba(111, 176, 200, 0.18);
+  --orb-right: rgba(216, 68, 18, 0.12);
+}

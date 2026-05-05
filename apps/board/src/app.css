@@ -1,0 +1,50 @@
+/*
+ * Global resets and base styles.
+ * All brand tokens (colors, fonts, surface) live in the active theme file.
+ * See src/themes/ for available themes.
+ */
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+#svelte {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Shared play/pause icon styles for timer widgets */
+.play-pause-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(0.95rem * var(--widget-scale, 1));
+  height: calc(0.95rem * var(--widget-scale, 1));
+  flex: 0 0 auto;
+}
+
+.play-pause-icon .play-triangle {
+  width: 0;
+  height: 0;
+  border-top: calc(0.3rem * var(--widget-scale, 1)) solid transparent;
+  border-bottom: calc(0.3rem * var(--widget-scale, 1)) solid transparent;
+  border-left: calc(0.48rem * var(--widget-scale, 1)) solid currentColor;
+  margin-left: calc(0.08rem * var(--widget-scale, 1));
+}
+
+.play-pause-icon .pause-bars {
+  display: inline-flex;
+  gap: calc(0.16rem * var(--widget-scale, 1));
+}
+
+.play-pause-icon .pause-bars span {
+  width: calc(0.18rem * var(--widget-scale, 1));
+  height: calc(0.64rem * var(--widget-scale, 1));
+  border-radius: 999px;
+  background: currentColor;
+}

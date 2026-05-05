@@ -1,0 +1,60 @@
+---
+import "../styles/global.css";
+
+interface Props {
+	title?: string;
+	description?: string;
+}
+
+const { title = "Lektionsvy", description = "Widgetbaserad klassrumsvy for svenska skolor" } = Astro.props;
+---
+
+<html lang="sv">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content={description} />
+		<meta name="generator" content={Astro.generator} />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+		<title>{title}</title>
+		<script is:inline>
+			(function() {
+				const isDark = localStorage.getItem('theme') === 'dark' ||
+					(!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				if (isDark) document.documentElement.classList.add('dark');
+			})();
+		</script>
+	</head>
+	<body class="bg-surface-light dark:bg-surface-dark text-indigo-900 dark:text-indigo-100 font-body antialiased">
+		<slot />
+		<script>
+			document.addEventListener('DOMContentLoaded', () => {
+				// Dark mode toggle
+				const toggle = document.getElementById('dark-toggle');
+				if (toggle) {
+					toggle.addEventListener('click', () => {
+						document.documentElement.classList.toggle('dark');
+						const isDark = document.documentElement.classList.contains('dark');
+						localStorage.setItem('theme', isDark ? 'dark' : 'light');
+					});
+				}
+
+				// Pixel avatar animation (3 frames: 1→2→3→2→1→2→…)
+				const frames = document.querySelectorAll<HTMLImageElement>('.avatar-frame');
+				if (frames.length === 3) {
+					const sequence = [0, 1, 2, 1];
+					let i = 0;
+					setInterval(() => {
+						frames.forEach(f => f.style.opacity = '0');
+						frames[sequence[i % sequence.length]].style.opacity = '1';
+						i++;
+					}, 400);
+				}
+			});
+		</script>
+	</body>
+</html>
