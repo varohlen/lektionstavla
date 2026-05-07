@@ -3,13 +3,13 @@ import logoDark from "./logo-dark.svg";
 import type { ThemeConfig } from "$lib/theme/types";
 
 export const config = {
-  schoolName: "Lektionsvy",
-  pageTitle: "Lektionsvy",
-  metaDescription: "Lektionsvy är en widgetbaserad classroom screen.",
+  schoolName: "Lektionstavla",
+  pageTitle: "Lektionstavla",
+  metaDescription: "Lektionstavla är en widgetbaserad klassrumsskärm.",
   logos: {
     light: logoLight,
     dark: logoDark,
-    aspectRatio: 1600 / 300,
+    aspectRatio: 1920 / 300,
   },
   textWidget: {
     defaultFont: "body",

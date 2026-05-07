@@ -77,7 +77,7 @@
     const INITIAL_BOARD_WIDTH = 1366;
     const INITIAL_BOARD_HEIGHT = 768;
     const GRID_SIZE = 16;
-    const STORAGE_KEY = "lektionsvy.board.v1";
+    const STORAGE_KEY = "lektionstavla.board.v1";
     const STORAGE_SAVE_DELAY_MS = 180;
     const TRELSON_EDIT_SECTION_COUNT = 5;
     const TRELSON_SECTION_SCALE = 0.155;
@@ -732,7 +732,7 @@
         const dateStamp = new Date().toISOString().slice(0, 10);
 
         anchor.href = url;
-        anchor.download = `lektionsvy-board-${dateStamp}.json`;
+        anchor.download = `lektionstavla-board-${dateStamp}.json`;
         document.body.append(anchor);
         anchor.click();
         anchor.remove();
@@ -745,7 +745,7 @@
             const parsed = JSON.parse(raw) as unknown;
 
             if (!isPortableBoardDocumentV1(parsed)) {
-                window.alert("Filen verkar inte vara en giltig Lektionsvy-board.");
+                window.alert("Filen verkar inte vara en giltig Lektionstavla-board.");
                 return;
             }
 

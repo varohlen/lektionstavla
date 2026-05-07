@@ -1,6 +1,6 @@
 import type { BoardLibraryItemKind, BoardLibraryItemV1, PortableBoardDocumentV1 } from "./types";
 
-const DB_NAME = "lektionsvy-library";
+const DB_NAME = "lektionstavla-library";
 const DB_VERSION = 1;
 const STORE_NAME = "boards";
 

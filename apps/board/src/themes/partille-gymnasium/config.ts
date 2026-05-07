@@ -4,8 +4,8 @@ import type { ThemeConfig } from "$lib/theme/types";
 
 export const config = {
   schoolName: "Partille Gymnasium",
-  pageTitle: "Lektionsvy | Partille Gymnasium",
-  metaDescription: "Lektionsvy är en widgetbaserad classroom screen för Partille Gymnasium.",
+  pageTitle: "Lektionstavla | Partille Gymnasium",
+  metaDescription: "Lektionstavla är en widgetbaserad klassrumsskärm för Partille Gymnasium.",
   logos: {
     light: logoLight,
     dark: logoDark,
