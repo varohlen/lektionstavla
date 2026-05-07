@@ -185,19 +185,26 @@ import pgDark from "../assets/schools/pg-dark.svg";
 		</section>
 
 		<!-- Footer -->
-		<footer class="relative z-10 max-w-6xl mx-auto px-8 md:px-16 py-12 border-t border-indigo-900/8 dark:border-indigo-300/8">
-			<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-				<a href="https://arohlen.se" class="group flex items-center gap-3 text-xs text-indigo-900/45 dark:text-indigo-200/35 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">
-					Ett projekt av Viktor
-					<div class="w-8 h-8 relative [image-rendering:pixelated]">
-						<img src={sit1.src} alt="Viktor Arohlén" class="absolute inset-0 w-full h-full avatar-frame" data-frame="1" />
-						<img src={sit2.src} alt="" class="absolute inset-0 w-full h-full avatar-frame opacity-0" data-frame="2" />
-						<img src={sit3.src} alt="" class="absolute inset-0 w-full h-full avatar-frame opacity-0" data-frame="3" />
-					</div>
-				</a>
+		<footer class="relative z-10 max-w-6xl mx-auto px-8 md:px-16 py-8 border-t border-indigo-900/8 dark:border-indigo-300/8">
+			<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+				<div class="flex items-center gap-6">
+					<img src={logoLight.src} alt="Lektionstavla" class="h-5 dark:hidden" />
+					<img src={logoDark.src} alt="Lektionstavla" class="h-5 hidden dark:block" />
+					<a href="https://arohlen.se" class="group flex items-center gap-2 text-xs text-indigo-900/45 dark:text-indigo-200/35 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">
+						<div class="w-7 h-7 relative [image-rendering:pixelated]">
+							<img src={sit1.src} alt="Viktor Arohlén" class="absolute inset-0 w-full h-full avatar-frame" data-frame="1" />
+							<img src={sit2.src} alt="" class="absolute inset-0 w-full h-full avatar-frame opacity-0" data-frame="2" />
+							<img src={sit3.src} alt="" class="absolute inset-0 w-full h-full avatar-frame opacity-0" data-frame="3" />
+						</div>
+						Ett projekt av Viktor
+					</a>
+				</div>
 				<div class="flex items-center gap-4">
-					<a href="mailto:v@arohlen.se" class="text-xs text-indigo-900/40 dark:text-indigo-200/30 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">Förslag eller frågor? v@arohlen.se</a>
+					<a href="mailto:v@arohlen.se" class="text-xs text-indigo-900/40 dark:text-indigo-200/30 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">v@arohlen.se</a>
 					<a href="https://github.com/varohlen/lektionstavla" class="text-xs text-indigo-600/60 dark:text-indigo-400/50 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors">GitHub</a>
+					<a href="https://app.lektionsvy.se" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs tracking-wide transition-colors">
+						Öppna appen &rarr;
+					</a>
 				</div>
 			</div>
 		</footer>
