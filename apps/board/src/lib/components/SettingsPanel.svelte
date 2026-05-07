@@ -219,6 +219,17 @@
             </button>
         </div>
 
+        <div class="section section--footer">
+            <a class="site-link" href="https://lektionstavla.se" target="_blank" rel="noopener">
+                lektionstavla.se
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+            </a>
+        </div>
+
         <input
             bind:this={importInput}
             class="hidden-file-input"
@@ -533,5 +544,35 @@
         stroke-linejoin: round;
         stroke-width: 1.8;
         flex-shrink: 0;
+    }
+
+    .section--footer {
+        padding-bottom: 0;
+        text-align: center;
+    }
+
+    .site-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-decoration: none;
+        transition: color 120ms ease;
+    }
+
+    .site-link:hover {
+        color: var(--text);
+    }
+
+    .site-link svg {
+        width: 0.7rem;
+        height: 0.7rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
     }
 </style>
