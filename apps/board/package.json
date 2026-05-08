@@ -24,7 +24,9 @@
     "@tiptap/extension-task-list": "^3.22.0",
     "@tiptap/extension-text-style": "^3.22.0",
     "@tiptap/starter-kit": "^3.22.0",
+    "@types/qrcode": "^1.5.6",
     "lucide-svelte": "^0.577.0",
+    "qrcode": "^1.5.4",
     "svooltip": "^0.9.0"
   },
   "devDependencies": {
