@@ -1,19 +1,24 @@
 <script lang="ts">
     import AddWidgetMenu from "$lib/components/AddWidgetMenu.svelte";
     import {
+        cloneWidgetInstance,
         cloneWidgetInstances,
         createPortableBoardDocument,
         createPersistedBoardState,
         deleteBoardLibraryItem,
+        formatTimer,
         getMissingWidgetTypes,
         getBoardLibraryItem,
+        getRemainingSeconds,
         isPortableBoardDocumentV1,
+        widgetConstraints,
         listBoardLibraryItems,
         saveBoardLibraryItem,
         type BoardLibraryItemV1,
         type BoardThemeMode,
         type PersistedBoardStateV1,
         type PortableBoardDocumentV1,
+        type StoredBoardStateV1,
         type TrelsonPins,
         type WidgetInstance,
     } from "$lib/board";
@@ -31,6 +36,11 @@
     import QrCodeWidget from "$lib/components/widgets/QrCodeWidget.svelte";
     import StopwatchWidget from "$lib/components/widgets/StopwatchWidget.svelte";
     import TrelsonWidget from "$lib/components/widgets/TrelsonWidget.svelte";
+    import {
+        getTrelsonHeight,
+        getTrelsonWidthFromHeight,
+        TRELSON_EDIT_SECTION_COUNT,
+    } from "$lib/components/widgets/trelsonMetrics";
 	import {
 		BODY_TEXT_FONT_VARIANTS,
 		config as themeConfig,
@@ -51,13 +61,6 @@
 	import { onMount } from "svelte";
 
 	type Theme = BoardThemeMode;
-    type WidgetConstraint = {
-        minW: number;
-        minH: number;
-        keepAspect: boolean;
-        aspectRatio?: number;
-        autoWidth?: boolean;
-    };
     type DragState = {
         id: string;
         offsetX: number;
@@ -79,9 +82,6 @@
     const GRID_SIZE = 16;
     const STORAGE_KEY = "lektionstavla.board.v1";
     const STORAGE_SAVE_DELAY_MS = 180;
-    const TRELSON_EDIT_SECTION_COUNT = 5;
-    const TRELSON_SECTION_SCALE = 0.155;
-    const TRELSON_SECTION_GAP_FACTOR = 0.18;
     const trelsonEnabled = themeConfig.features.trelson;
 	const textWidgetFontVariants = [...TEXT_WIDGET_FONT_VARIANTS];
 	const bodyTextFontVariants = [...BODY_TEXT_FONT_VARIANTS];
@@ -113,31 +113,6 @@
         day: "numeric",
         month: "long",
     });
-
-    const widgetConstraints: Record<WidgetType, WidgetConstraint> = {
-        logo: {
-            minW: 180,
-            minH: 44,
-            keepAspect: true,
-            aspectRatio: themeConfig.logos.aspectRatio,
-        },
-        date: { minW: 160, minH: 24, keepAspect: false, autoWidth: true },
-        digital: { minW: 160, minH: 72, keepAspect: false, autoWidth: true },
-        lcd: { minW: 240, minH: 80, keepAspect: true, aspectRatio: 2.64 },
-        text: { minW: 140, minH: 40, keepAspect: false, autoWidth: true },
-        bodyText: { minW: 220, minH: 140, keepAspect: false },
-        analog: { minW: 220, minH: 220, keepAspect: true, aspectRatio: 1 },
-        lessonTimer: {
-            minW: 320,
-            minH: 300,
-            keepAspect: true,
-            aspectRatio: 1.1,
-        },
-        timer: { minW: 320, minH: 170, keepAspect: true, aspectRatio: 2 },
-        stopwatch: { minW: 340, minH: 140, keepAspect: true, aspectRatio: 2.5 },
-        qrcode: { minW: 180, minH: 200, keepAspect: false },
-        trelson: { minW: 220, minH: 120, keepAspect: false },
-    };
 
 	const widgetDefaults = Object.fromEntries(
 		variantWidgetEntries.map(([type, widget]) => [type, widget.defaultLayout]),
@@ -186,7 +161,7 @@
     let fullscreenActive = $state(false);
     let fullscreenHintVisible = $state(false);
     let fullscreenDockVisible = $state(false);
-    let fullscreenDockTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let fullscreenDockTimeoutId: number | null = null;
     const FULLSCREEN_DOCK_TRIGGER_ZONE = 80;
     const FULLSCREEN_DOCK_HIDE_DELAY = 2400;
     let selectedWidgetId = $state<string | null>(null);
@@ -194,7 +169,12 @@
     let resizeState = $state<ResizeState | null>(null);
     let lastBoardSize = $state<BoardSize | null>(null);
     let boardLibraryItems = $state<BoardLibraryItemV1[]>([]);
-    let storageReady = false;
+    // Must be reactive: the autosave effect below bails out on the first run
+    // (before onMount), so a plain variable would leave it without any tracked
+    // dependency and it would never run again.
+    let storageReady = $state(false);
+    /** Last payload written to localStorage, used to skip identical writes. */
+    let lastPersistedSnapshot: string | null = null;
     let widgets = $state<WidgetInstance[]>(
         createInitialWidgets(INITIAL_BOARD_WIDTH, INITIAL_BOARD_HEIGHT),
     );
@@ -242,14 +222,6 @@
 
     function findWidget(id: string) {
         return widgets.find((widget) => widget.id === id);
-    }
-
-    function getPersistedTrelsonSectionCount(widget: WidgetInstance) {
-        const filledCount = Object.values(
-            widget.trelsonPins ?? defaultTrelsonPins,
-        ).filter((value) => value.trim().length > 0).length;
-
-        return Math.max(2, 1 + filledCount);
     }
 
     function createWidgetInstance(
@@ -338,6 +310,7 @@
             instance.timerDuration = defaultDuration;
             instance.timerRemaining = defaultDuration;
             instance.timerRunning = false;
+            instance.timerEndsAt = null;
         }
 
         if (type === "lessonTimer") {
@@ -346,6 +319,7 @@
             instance.lessonTimerDurationMinutes = defaultDurationMinutes;
             instance.lessonTimerRemaining = defaultDurationMinutes * 60;
             instance.lessonTimerRunning = false;
+            instance.lessonTimerEndsAt = null;
         }
 
         if (type === "stopwatch") {
@@ -405,7 +379,7 @@
         if (restored.type === "trelson") {
             restored.h = getTrelsonHeight(
                 restored.w,
-                getPersistedTrelsonSectionCount(restored),
+                getTrelsonSectionCount(restored, false),
             );
         } else if (constraints.keepAspect && constraints.aspectRatio) {
             restored.h = restored.w / constraints.aspectRatio;
@@ -448,6 +422,7 @@
                 restored.timerDuration,
             );
             restored.timerRunning = false;
+            restored.timerEndsAt = null;
         }
 
         if (restored.type === "lessonTimer") {
@@ -473,6 +448,7 @@
                 restored.lessonTimerDurationMinutes * 60,
             );
             restored.lessonTimerRunning = false;
+            restored.lessonTimerEndsAt = null;
         }
 
         if (restored.type === "stopwatch") {
@@ -554,7 +530,7 @@
 
             if (!raw) return null;
 
-            const parsed = JSON.parse(raw) as Partial<PersistedBoardStateV1>;
+            const parsed = JSON.parse(raw) as StoredBoardStateV1;
 
             if (parsed.version !== 1 || !Array.isArray(parsed.widgets)) {
                 return null;
@@ -595,8 +571,13 @@
     }
 
     function savePersistedBoardState(snapshot: PersistedBoardStateV1) {
+        const serialized = JSON.stringify(snapshot);
+
+        if (serialized === lastPersistedSnapshot) return;
+
         try {
-            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+            window.localStorage.setItem(STORAGE_KEY, serialized);
+            lastPersistedSnapshot = serialized;
         } catch (error) {
             console.warn("Failed to save board state", error);
         }
@@ -674,13 +655,13 @@
         }
     }
 
-    function applyPortableBoard(document: PortableBoardDocumentV1) {
+    function applyPortableBoard(boardDocument: PortableBoardDocumentV1) {
         const missingWidgetTypes = getMissingWidgetTypes(
-            document,
+            boardDocument,
             enabledWidgetTypes,
         );
         const { width, height } = getBoardSize();
-        const restoredWidgets = document.widgets
+        const restoredWidgets = boardDocument.widgets
             .map((widget) => restoreWidgetInstance(widget, width, height))
             .filter((widget): widget is WidgetInstance => widget !== null)
             .sort((a, b) => a.z - b.z);
@@ -693,13 +674,13 @@
         }
 
         widgets = restoredWidgets;
-        if (typeof document.board.darkMode === "boolean") {
-            theme = document.board.darkMode ? "dark" : "light";
+        if (typeof boardDocument.board.darkMode === "boolean") {
+            theme = boardDocument.board.darkMode ? "dark" : "light";
         }
         setWidgetIdCounterFromWidgets(restoredWidgets);
-        showGrid = document.board.showGrid;
-        snapToGrid = document.board.snapToGrid;
-        defaultLayout = document.board.defaultLayout;
+        showGrid = boardDocument.board.showGrid;
+        snapToGrid = boardDocument.board.snapToGrid;
+        defaultLayout = boardDocument.board.defaultLayout;
         selectedWidgetId = null;
         dragState = null;
         resizeState = null;
@@ -856,31 +837,6 @@
         return Math.max(2, 1 + filledCount);
     }
 
-    function getTrelsonSectionHeightFromWidth(width: number) {
-        return Math.max(44, width * TRELSON_SECTION_SCALE);
-    }
-
-    function getTrelsonGapFromSectionHeight(sectionHeight: number) {
-        return sectionHeight * TRELSON_SECTION_GAP_FACTOR;
-    }
-
-    function getTrelsonHeight(width: number, sectionCount: number) {
-        const sectionHeight = getTrelsonSectionHeightFromWidth(width);
-        const sectionGap = getTrelsonGapFromSectionHeight(sectionHeight);
-
-        return Math.round(
-            sectionHeight * sectionCount + sectionGap * (sectionCount - 1),
-        );
-    }
-
-    function getTrelsonWidthFromHeight(height: number, sectionCount: number) {
-        const sectionUnit =
-            TRELSON_SECTION_SCALE *
-            (sectionCount + TRELSON_SECTION_GAP_FACTOR * (sectionCount - 1));
-
-        return height / sectionUnit;
-    }
-
     function syncTrelsonHeight(id: string, forceSelected?: boolean) {
         const widget = findWidget(id);
         if (!widget || widget.type !== "trelson") return;
@@ -946,6 +902,7 @@
         widget.timerDuration = nextSeconds;
         widget.timerRemaining = nextSeconds;
         widget.timerRunning = false;
+        widget.timerEndsAt = null;
         widgets = [...widgets];
     }
 
@@ -953,11 +910,23 @@
         const widget = findWidget(id);
         if (!widget || widget.type !== "timer") return;
 
-        if ((widget.timerRemaining ?? 0) === 0) {
-            widget.timerRemaining = widget.timerDuration ?? 0;
+        if (widget.timerRunning) {
+            widget.timerRemaining = getRemainingSeconds(
+                widget.timerEndsAt,
+                widget.timerRemaining ?? 0,
+            );
+            widget.timerRunning = false;
+            widget.timerEndsAt = null;
+        } else {
+            if ((widget.timerRemaining ?? 0) === 0) {
+                widget.timerRemaining = widget.timerDuration ?? 0;
+            }
+
+            widget.timerRunning = true;
+            widget.timerEndsAt =
+                Date.now() + (widget.timerRemaining ?? 0) * 1000;
         }
 
-        widget.timerRunning = !widget.timerRunning;
         widgets = [...widgets];
     }
 
@@ -967,6 +936,7 @@
 
         widget.timerRemaining = widget.timerDuration ?? 0;
         widget.timerRunning = false;
+        widget.timerEndsAt = null;
         widgets = [...widgets];
     }
 
@@ -978,6 +948,7 @@
         widget.lessonTimerDurationMinutes = nextMinutes;
         widget.lessonTimerRemaining = nextMinutes * 60;
         widget.lessonTimerRunning = false;
+        widget.lessonTimerEndsAt = null;
         widgets = [...widgets];
     }
 
@@ -985,12 +956,24 @@
         const widget = findWidget(id);
         if (!widget || widget.type !== "lessonTimer") return;
 
-        if ((widget.lessonTimerRemaining ?? 0) === 0) {
-            widget.lessonTimerRemaining =
-                (widget.lessonTimerDurationMinutes ?? 0) * 60;
+        if (widget.lessonTimerRunning) {
+            widget.lessonTimerRemaining = getRemainingSeconds(
+                widget.lessonTimerEndsAt,
+                widget.lessonTimerRemaining ?? 0,
+            );
+            widget.lessonTimerRunning = false;
+            widget.lessonTimerEndsAt = null;
+        } else {
+            if ((widget.lessonTimerRemaining ?? 0) === 0) {
+                widget.lessonTimerRemaining =
+                    (widget.lessonTimerDurationMinutes ?? 0) * 60;
+            }
+
+            widget.lessonTimerRunning = true;
+            widget.lessonTimerEndsAt =
+                Date.now() + (widget.lessonTimerRemaining ?? 0) * 1000;
         }
 
-        widget.lessonTimerRunning = !widget.lessonTimerRunning;
         widgets = [...widgets];
     }
 
@@ -1001,7 +984,64 @@
         widget.lessonTimerRemaining =
             (widget.lessonTimerDurationMinutes ?? 0) * 60;
         widget.lessonTimerRunning = false;
+        widget.lessonTimerEndsAt = null;
         widgets = [...widgets];
+    }
+
+    /**
+     * Advances the clock and recomputes running countdowns from their absolute
+     * deadline, so the displayed time stays correct even when the interval is
+     * throttled (background tab, sleeping display).
+     */
+    function tickClockAndTimers() {
+        now = new Date();
+
+        const nowMs = now.getTime();
+        let didTick = false;
+
+        for (const widget of widgets) {
+            if (widget.type === "timer" && widget.timerRunning) {
+                const remaining = getRemainingSeconds(
+                    widget.timerEndsAt,
+                    widget.timerRemaining ?? 0,
+                    nowMs,
+                );
+
+                if (remaining !== widget.timerRemaining) {
+                    widget.timerRemaining = remaining;
+                    didTick = true;
+                }
+
+                if (remaining === 0) {
+                    widget.timerRunning = false;
+                    widget.timerEndsAt = null;
+                    didTick = true;
+                }
+            }
+
+            if (widget.type === "lessonTimer" && widget.lessonTimerRunning) {
+                const remaining = getRemainingSeconds(
+                    widget.lessonTimerEndsAt,
+                    widget.lessonTimerRemaining ?? 0,
+                    nowMs,
+                );
+
+                if (remaining !== widget.lessonTimerRemaining) {
+                    widget.lessonTimerRemaining = remaining;
+                    didTick = true;
+                }
+
+                if (remaining === 0) {
+                    widget.lessonTimerRunning = false;
+                    widget.lessonTimerEndsAt = null;
+                    didTick = true;
+                }
+            }
+        }
+
+        if (didTick) {
+            widgets = [...widgets];
+        }
     }
 
     function getStopwatchElapsed(widget: WidgetInstance) {
@@ -1164,6 +1204,7 @@
         const { width, height } = getBoardSize();
 
         window.localStorage.removeItem(STORAGE_KEY);
+        lastPersistedSnapshot = null;
         widgets = createInitialWidgets(width, height);
         setWidgetIdCounterFromWidgets(widgets);
         theme = "light";
@@ -1263,19 +1304,6 @@
                 fullscreenHintVisible = false;
             }
         }, 2600);
-    }
-
-    function formatTimer(totalSeconds: number) {
-        const safeSeconds = Math.max(0, totalSeconds);
-        const hours = Math.floor(safeSeconds / 3600);
-        const minutes = Math.floor((safeSeconds % 3600) / 60);
-        const seconds = safeSeconds % 60;
-
-        if (hours > 0) {
-            return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-        }
-
-        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     }
 
     function startDrag(event: PointerEvent, id: string) {
@@ -1672,7 +1700,7 @@
         const offset = 20;
         const newId = nextWidgetId(source.type);
         const clone: WidgetInstance = {
-            ...JSON.parse(JSON.stringify(source)),
+            ...cloneWidgetInstance(source),
             id: newId,
             x: source.x + offset,
             y: source.y + offset,
@@ -1765,58 +1793,23 @@
             flushPersistedBoardState();
         };
 
-        const interval = window.setInterval(() => {
-            now = new Date();
-            let didTick = false;
+        // Catch up immediately when returning to a throttled tab instead of
+        // waiting for the next interval tick.
+        const handleVisibilityChange = () => {
+            if (!document.hidden) tickClockAndTimers();
+        };
 
-            for (const widget of widgets) {
-                if (
-                    widget.type === "timer" &&
-                    widget.timerRunning &&
-                    (widget.timerRemaining ?? 0) > 0
-                ) {
-                    widget.timerRemaining = Math.max(
-                        0,
-                        (widget.timerRemaining ?? 0) - 1,
-                    );
-
-                    if (widget.timerRemaining === 0) {
-                        widget.timerRunning = false;
-                    }
-
-                    didTick = true;
-                }
-
-                if (
-                    widget.type === "lessonTimer" &&
-                    widget.lessonTimerRunning &&
-                    (widget.lessonTimerRemaining ?? 0) > 0
-                ) {
-                    widget.lessonTimerRemaining = Math.max(
-                        0,
-                        (widget.lessonTimerRemaining ?? 0) - 1,
-                    );
-
-                    if (widget.lessonTimerRemaining === 0) {
-                        widget.lessonTimerRunning = false;
-                    }
-
-                    didTick = true;
-                }
-            }
-
-            if (didTick) {
-                widgets = [...widgets];
-            }
-        }, 1000);
+        const interval = window.setInterval(tickClockAndTimers, 1000);
 
         window.addEventListener("pointermove", handlePointerMove);
         window.addEventListener("pointermove", handleFullscreenPointerMove);
         window.addEventListener("pointerup", stopDrag);
         window.addEventListener("keydown", handleKeyDown, { capture: true });
+        // `pagehide` also fires when the page enters the back/forward cache,
+        // so it covers unload without the `beforeunload` bfcache penalty.
         window.addEventListener("pagehide", handlePageHide);
-        window.addEventListener("beforeunload", handlePageHide);
         document.addEventListener("fullscreenchange", handleFullscreenChange);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             flushPersistedBoardState();
@@ -1827,10 +1820,13 @@
             window.removeEventListener("pointerup", stopDrag);
             window.removeEventListener("keydown", handleKeyDown, { capture: true });
             window.removeEventListener("pagehide", handlePageHide);
-            window.removeEventListener("beforeunload", handlePageHide);
             document.removeEventListener(
                 "fullscreenchange",
                 handleFullscreenChange,
+            );
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange,
             );
             boardResizeObserver?.disconnect();
         };
@@ -1847,6 +1843,8 @@
         <div
             class="dock-wrapper"
             class:dock-wrapper--fullscreen={fullscreenActive}
+            role="group"
+            aria-label="Verktygsfält"
             onpointerenter={() => { if (fullscreenActive) clearFullscreenDockTimeout(); }}
             onpointerleave={() => { if (fullscreenActive) scheduleFullscreenDockHide(); }}
         >
@@ -1911,92 +1909,54 @@
             {/if}
 
             {#each orderedWidgets as widget (widget.id)}
+                {@const selected = selectedWidgetId === widget.id}
+                {@const shell = {
+                    x: widget.x,
+                    y: widget.y,
+                    w: widget.w,
+                    h: widget.h,
+                    z: widget.z,
+                    selected,
+                    onSelect: () => selectWidget(widget.id),
+                    onMoveStart: (event: PointerEvent) =>
+                        startDrag(event, widget.id),
+                    onResizeStart: (event: PointerEvent) =>
+                        startResize(event, widget.id),
+                    onBringForward: () => moveWidgetLayer(widget.id, "forward"),
+                    onSendBackward: () => moveWidgetLayer(widget.id, "backward"),
+                    onDelete: () => removeWidget(widget.id),
+                }}
+                {@const onMeasure = (size: { width: number; height: number }) =>
+                    syncIntrinsicSize(widget.id, size)}
+                {@const scaleHeight = widget.scaleH ?? widget.h}
+
                 {#if widget.type === "logo"}
-                    <LogoWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
-                        src={activeLogo}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
-                    />
+                    <LogoWidget {...shell} src={activeLogo} />
                 {:else if widget.type === "date"}
                     <DateWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        scaleHeight={widget.scaleH ?? widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
+                        {scaleHeight}
+                        {onMeasure}
                         value={currentDate}
-                        onMeasure={(size) => syncIntrinsicSize(widget.id, size)}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "digital"}
                     <DigitalClockWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        scaleHeight={widget.scaleH ?? widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
+                        {scaleHeight}
+                        {onMeasure}
                         time={digitalTime}
-                        onMeasure={(size) => syncIntrinsicSize(widget.id, size)}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "lcd"}
                     <LcdClockWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         time={digitalTime}
                         seconds={now.getSeconds()}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "text"}
                     <TextWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        scaleHeight={widget.scaleH ?? widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
+                        {scaleHeight}
+                        {onMeasure}
                         isDark={theme === "dark"}
                         value={widget.textValue ?? "Skriv rubrik"}
                         font={widget.textFont ??
@@ -2009,15 +1969,6 @@
                         backgroundLabels={themeConfig.textWidget
                             .backgroundLabels}
                         colorLabels={themeConfig.textWidget.colorLabels}
-                        onMeasure={(size) => syncIntrinsicSize(widget.id, size)}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                         onToggleFont={() => toggleTextWidgetFont(widget.id)}
                         onBackgroundSelect={(background) =>
                             setTextWidgetBackground(widget.id, background)}
@@ -2028,32 +1979,14 @@
                     />
                 {:else if widget.type === "analog"}
                     <AnalogClockWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         {hourAngle}
                         {minuteAngle}
                         {secondAngle}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "lessonTimer"}
                     <LessonTimerWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         durationMinutes={widget.lessonTimerDurationMinutes ??
                             60}
                         remainingSeconds={widget.lessonTimerRemaining ??
@@ -2063,23 +1996,10 @@
                             setLessonTimerDuration(widget.id, minutes)}
                         onToggle={() => toggleLessonTimer(widget.id)}
                         onReset={() => resetLessonTimer(widget.id)}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "timer"}
                     <TimerWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         seconds={widget.timerRemaining ?? 15 * 60}
                         label={formatTimer(widget.timerRemaining ?? 15 * 60)}
                         progress={(widget.timerDuration ?? 0) > 0
@@ -2091,23 +2011,10 @@
                             setDigitalTimerSeconds(widget.id, seconds)}
                         onToggle={() => toggleTimer(widget.id)}
                         onReset={() => resetTimer(widget.id)}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "bodyText"}
                     <BodyTextWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         resizing={resizeState?.id === widget.id}
                         isDark={theme === "dark"}
                         value={widget.textValue ?? "Skriv instruktioner här..."}
@@ -2122,14 +2029,6 @@
                         backgroundLabels={themeConfig.textWidget
                             .backgroundLabels}
                         colorLabels={themeConfig.textWidget.colorLabels}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                         onValueChange={(value) =>
                             updateTextWidgetValue(widget.id, value)}
                         onBackgroundSelect={(background) =>
@@ -2139,12 +2038,7 @@
                     />
                 {:else if widget.type === "stopwatch"}
                     <StopwatchWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         startTime={widget.stopwatchStartTime ?? null}
                         accumulated={widget.stopwatchAccumulated ?? 0}
                         running={widget.stopwatchRunning ?? false}
@@ -2152,52 +2046,18 @@
                         onToggle={() => toggleStopwatch(widget.id)}
                         onReset={() => resetStopwatch(widget.id)}
                         onLap={() => lapStopwatch(widget.id)}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                     />
                 {:else if widget.type === "qrcode"}
                     <QrCodeWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         value={widget.qrValue ?? ""}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                         onValueChange={(value) =>
                             updateQrValue(widget.id, value)}
                     />
                 {:else if widget.type === "trelson"}
                     <TrelsonWidget
-                        x={widget.x}
-                        y={widget.y}
-                        w={widget.w}
-                        h={widget.h}
-                        z={widget.z}
-                        selected={selectedWidgetId === widget.id}
+                        {...shell}
                         pins={widget.trelsonPins ?? defaultTrelsonPins}
-                        onSelect={() => selectWidget(widget.id)}
-                        onMoveStart={(event) => startDrag(event, widget.id)}
-                        onResizeStart={(event) => startResize(event, widget.id)}
-                        onBringForward={() =>
-                            moveWidgetLayer(widget.id, "forward")}
-                        onSendBackward={() =>
-                            moveWidgetLayer(widget.id, "backward")}
-                        onDelete={() => removeWidget(widget.id)}
                         onPinChange={(field, value) =>
                             updateTrelsonPin(widget.id, field, value)}
                     />

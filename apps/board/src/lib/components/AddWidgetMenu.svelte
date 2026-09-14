@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { fly } from "svelte/transition";
+	import { WIDGET_CATEGORY_ORDER, widgetCategories } from "$lib/board";
+	import type { WidgetType } from "$lib/variant";
 
 	type Entry = {
-		key: string;
+		key: WidgetType;
 		label: string;
 		count: number;
 		status: "ready" | "beta" | "prototype";
@@ -17,23 +19,6 @@
 
 	let { open, entries }: Props = $props();
 	let experimentalOpen = $state(false);
-
-	const categoryMap: Record<string, string> = {
-		digital: "Tid",
-		lcd: "Tid",
-		analog: "Tid",
-		date: "Tid",
-		timer: "Timer",
-		lessonTimer: "Timer",
-		stopwatch: "Timer",
-		text: "Text",
-		bodyText: "Text",
-		qrcode: "Övrigt",
-		trelson: "Övrigt",
-		logo: "Övrigt",
-	};
-
-	const categoryOrder = ["Tid", "Timer", "Text", "Övrigt"];
 
 	const categoryColors: Record<string, string> = {
 		"Tid": "var(--brand-primary-500)",
@@ -52,12 +37,10 @@
 	);
 
 	const categories = $derived<Category[]>(
-		categoryOrder
-			.map((name) => ({
-				name,
-				entries: readyEntries.filter((e) => categoryMap[e.key] === name),
-			}))
-			.filter((c) => c.entries.length > 0),
+		WIDGET_CATEGORY_ORDER.map((name) => ({
+			name,
+			entries: readyEntries.filter((e) => widgetCategories[e.key] === name),
+		})).filter((c) => c.entries.length > 0),
 	);
 </script>
 

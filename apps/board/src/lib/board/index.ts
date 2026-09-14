@@ -12,6 +12,7 @@ export type {
   BoardThemeMode,
   PersistedBoardStateV1,
   PortableBoardDocumentV1,
+  StoredBoardStateV1,
   TrelsonPins,
   WidgetInstance,
 } from "./types";
@@ -22,6 +23,16 @@ export {
   listBoardLibraryItems,
   saveBoardLibraryItem,
 } from "./library";
+
+export { formatTimer, getRemainingSeconds } from "./time";
+
+export {
+  WIDGET_CATEGORY_ORDER,
+  widgetCategories,
+  widgetConstraints,
+  type WidgetCategory,
+  type WidgetConstraint,
+} from "./widgets";
 
 export function cloneWidgetInstance(widget: WidgetInstance): WidgetInstance {
   return {

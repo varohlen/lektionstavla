@@ -1,5 +1,6 @@
 <script lang="ts">
 	import WidgetShell from "./WidgetShell.svelte";
+	import { getTrelsonSectionGap, getTrelsonSectionHeight } from "./trelsonMetrics";
 
 	type TrelsonPins = {
 		start: string;
@@ -54,8 +55,8 @@
 			? rows
 			: rows.filter((row) => (pins[row.key] ?? "").trim().length > 0),
 	);
-	const sectionHeight = $derived(Math.max(44, w * 0.155));
-	const sectionGap = $derived(`${sectionHeight * 0.18}px`);
+	const sectionHeight = $derived(getTrelsonSectionHeight(w));
+	const sectionGap = $derived(`${getTrelsonSectionGap(sectionHeight)}px`);
 	const labelSize = $derived(`${sectionHeight * 0.2}px`);
 	const valueSize = $derived(`${sectionHeight * 0.28}px`);
 	const inputSize = $derived(`${sectionHeight * 0.26}px`);

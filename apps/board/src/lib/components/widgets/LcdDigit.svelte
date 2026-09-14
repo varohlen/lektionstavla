@@ -34,7 +34,7 @@
 
 	const activeClass = $derived(digits[number] ?? '');
 
-	const paths = {
+	const paths = $derived({
 		tl: segmentV(LENGTH, thickness, 5.75, 1.75),
 		tr: segmentV(LENGTH, thickness, 13.25, 1.75),
 		bl: segmentV(LENGTH, thickness, 5.75, 9.25),
@@ -42,7 +42,7 @@
 		vt: segmentH(LENGTH, thickness, 6, 1.5),
 		vm: segmentH(LENGTH, thickness, 6, 9),
 		vb: segmentH(LENGTH, thickness, 6, 16.5),
-	};
+	});
 </script>
 
 <svg viewBox="4 0 11 18" class="lcd-digit {activeClass}">

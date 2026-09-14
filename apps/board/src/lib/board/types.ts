@@ -32,9 +32,13 @@ export type WidgetInstance = {
   timerDuration?: number;
   timerRemaining?: number;
   timerRunning?: boolean;
+  /** Epoch ms the countdown reaches zero. Only set while running. */
+  timerEndsAt?: number | null;
   lessonTimerDurationMinutes?: number;
   lessonTimerRemaining?: number;
   lessonTimerRunning?: boolean;
+  /** Epoch ms the countdown reaches zero. Only set while running. */
+  lessonTimerEndsAt?: number | null;
   stopwatchStartTime?: number | null;
   stopwatchAccumulated?: number;
   stopwatchRunning?: boolean;
@@ -60,6 +64,16 @@ export type PortableBoardDocumentV1 = {
 
 export type PersistedBoardStateV1 = PortableBoardDocumentV1 & {
   theme: BoardThemeMode;
+};
+
+/**
+ * Shape read back from localStorage. Older builds kept the board flags at the
+ * top level instead of under `board`, so both placements are tolerated on read.
+ */
+export type StoredBoardStateV1 = Partial<PersistedBoardStateV1> & {
+  showGrid?: boolean;
+  snapToGrid?: boolean;
+  defaultLayout?: boolean;
 };
 
 export type BoardLibraryItemKind = "screen" | "template";
