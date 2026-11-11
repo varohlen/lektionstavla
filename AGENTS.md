@@ -6,6 +6,12 @@ Landningssidan länkar till app.lektionstavla.se och partille.lektionstavla.se.
 Tavlan driftsätts på Cloudflare Workers med namnen `lektionstavla` respektive
 `lektionstavla-partille`. Landningssidans deploy-konfiguration finns inte i repot.
 
+## Arbetsplats
+
+Den aktiva arbetskopian finns på **server1** i
+`/home/varohlen/utveckling/lektionstavla`. Gör allt nytt arbete där via T3 Connect
+eller, från laptopen, `ssh server1-ts`. Laptopens klon är avvecklad.
+
 ## Verktyg
 
 Monorepot använder `pnpm@10.32.1` och `pnpm-workspace.yaml`. Landing kräver Node.js `>=22.12.0`.

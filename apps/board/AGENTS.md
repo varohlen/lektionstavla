@@ -1,3 +1,8 @@
+# Arbetsplats
+
+Tavlan utvecklas på server1 i `/home/varohlen/utveckling/lektionstavla/apps/board`.
+Läs även repots `../../AGENTS.md`. Laptopens klon är avvecklad.
+
 <!--VITE PLUS START-->
 
 # Using Vite+, the Unified Toolchain for the Web
